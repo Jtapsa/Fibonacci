@@ -55,6 +55,8 @@ main:
     #
     #	Add + 1 to potency sum for each added bits
     #	.quad 0x20                                         # 2^ Potency starting value 
+    #
+    #   Program can't also detect Fibonacci number 0, because listLoop will stop, when it get zero as current X.
 
 
     # Free variables and their initializations:
@@ -274,9 +276,9 @@ multiplicationSum:
 # SQRT 
 #       Sgrt algorithm also makes use of information about bit relations for example if 
 #       Sgrt algorithm Bit >> 2, it just check, which bit is 2 values smaller than curren Bit
-#       For Ress >> 1, it use sameway Num - current > 0 information and if its true
+#       For Res >> 1, it use sameway Num - current > 0 information and if its true
 #       Bit value which is 1 smaller in Bit list will be added into Sub sum 
-#       Finally those sub Sum's are added together and that's Ress >> 1 result
+#       Finally those sub Sum's are added together and that's Res >> 1 result
 
 biggerThanNum:
     rrmovq %rax,%r10                   # Bit --> r10
@@ -319,19 +321,19 @@ sqrtLoop:
     irmovq $5376,%rdx                   # Bit array starting point
     jmp siftLoop
 
-# FOR RESS >> 1 sift
+# FOR RES >> 1 sift
 siftLoop:
     irmovq $0,%rdi                      # Auxiliary variable
     mrmovq (%rdx),%rbx                  # Bit array current value --> rbx
     mrmovq 8(%rdx),%r10                 # Bit array pointer + 8
     irmovq $0,%r9                       # Auxiliary variable
-    subq %r14,%r9                       # if Ress (r14) = 0, no need to continue sift loop
+    subq %r14,%r9                       # if Res (r14) = 0, no need to continue sift loop
     jne siftOne
     jmp compare
 
-# IF ELSE NUM >= RES + BIT
+# IF NUM >= RES >> 1 + BIT --> res = RES >> 1 + BIT or Else res = RES >> 1
 compare:
-    # Sift << 1 for Res done
+    # Sift >> 1 for Res done
     irmovq $0,%r14
     rmmovq %r13,8(%rsi)                # Adding sift sum = res >> 1 to memory
     irmovq $0, %rdi                    # Reseting Auxiliary variable
@@ -357,7 +359,7 @@ siftBit:
     rmmovq %r14,(%rsi)                 # Updated pointer value to memory
     jmp biggerThanZero
 
-# RESS >> 1 sift
+# RES >> 1 sift
 siftOne:
     rrmovq %r14,%r9                    # res --> r9
     subq %rbx,%r9                      # r9 - bit array current value
