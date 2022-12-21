@@ -56,20 +56,9 @@ main:
     #	Add + 1 to potency sum for each added bits
     #	.quad 0x20                                         # 2^ Potency starting value 
     #
+    #   + If you add enough more bits, you may want to chage bitArrayCutSqrt and bitArrayCutMultiplication threshold values.
+    #
     #   Program can't also detect Fibonacci number 0, because listLoop will stop, when it get zero as current X.
-
-
-    # Free variables and their initializations:
-    irmovq $0,%rax
-    irmovq $0,%rcx
-    irmovq $0,%rbx
-    irmovq $0,%rdi
-    irmovq $0,%r8
-    irmovq $0,%r9
-    irmovq $0,%r10
-    irmovq $0,%r12
-    irmovq $0,%r13
-    irmovq $0,%r14
 
     call listLoop
     halt
@@ -87,12 +76,11 @@ fibonacciStart:
     rrmovq %rax,%r12                 # Adding current X to r12 = Multiplicand
     rrmovq %rax,%rcx                 # Adding current X to rcx = Multiplier
     irmovq $0,%rax
-    irmovq $5376,%rdx                # Bit array starting point
     mrmovq 48(%rsi),%r13             # 2^ Potency starting value --> r13
     irmovq $1, %r10                  # Auxiliary variable --> - 1
     irmovq $0,%r14
     rmmovq %r14,64(%rsi)             # Multiplication status
-    jmp multiplication
+    jmp bitArrayCutMultiplication
 
 # X * X DONE
 fibonacciXXdone:
@@ -112,7 +100,6 @@ fibonacciXXdone:
     jmp firstCheck
 
 # X * X * 5 + 4 
-
 firstCheck:
     # r14 = X * X * 5 + 4
     mrmovq 80(%rsi), %r12             # SQRT(r12)
@@ -129,34 +116,28 @@ firstCheck:
     jmp biggerThanNum
 
 # Sqrt(X * X * 5 + 4) DONE
-
 fisrtSqrtDone:
     mrmovq 40(%rsi), %rax            # Adding SQRT result to --> rax
     rrmovq %rax,%r12                 # Adding current X to r12 = Multiplicand
     rrmovq %rax,%rcx                 # Adding current X to rcx = Multiplier
     irmovq $0,%rax
-    irmovq $5376,%rdx                # Bit array starting point
     mrmovq 48(%rsi),%r13             # 2^ Potency starting value --> r13
     irmovq $1,%r14
     irmovq $1, %r10                  # Auxiliary variable --> - 1
     rmmovq %r14,64(%rsi)             # Multiplication status
-    jmp multiplication
+    jmp bitArrayCutMultiplication
 
 # S = Sqrt(X * X * 5 + 4) --> S*S DONE
-
 firstSSdone:
     mrmovq 80(%rsi), %rax            # Adding X * X * 5 + 4  to --> rax
     mrmovq 32(%rsi), %r14            # Adding MULTIPLICATION RESULT to --> r14
-    irmovq $1,%r13
-    irmovq $0,%r10
-    subq %rax,%r14
-    cmove %r13,%r10                  # if S * S = X * X * 5 + 4, result = 1
-    rmmovq %r10,88(%rsi)             # Adding True or False result to memory
-    jmp secondCheck
-    halt
+    subq %rax,%r14                   # if S * S == X * X * 5 + 4
+    je fibonacciTrue                 # IF isPerfectSquare(5*x*x + 4) = True, we can skip isPerfectSquare(5*x*x - 4) step
+    jmp secondCheck                  # Else --> secondCheck
+
+
 
 # (X * X * 5 + 4) - 8 == X * X * 5 - 4
-
 secondCheck:
     mrmovq 80(%rsi), %r14             # from memory --> %r14 =  X * X * 5 + 4
     irmovq $8,%r8                     # 8 --> r8
@@ -176,47 +157,34 @@ secondCheck:
     jmp biggerThanNum
 
 # Sqrt(X * X * 5 - 4) DONE
-
 secondSqrtDone:
     mrmovq 40(%rsi), %rax             # Adding SQRT result to --> rax
     rrmovq %rax,%r12                  # Adding current X to r12 = Multiplicand
     rrmovq %rax,%rcx                  # Adding current X to rcx = Multiplier
     irmovq $0,%rax
-    irmovq $5376,%rdx                 # Bit array starting point
     mrmovq 48(%rsi),%r13              # 2^ Potency starting value --> r13
     irmovq $1, %r10                   # Auxiliary variable --> - 1
     irmovq $2,%r14
     rmmovq %r14,64(%rsi)              # Multiplication status
-    jmp multiplication
+    jmp bitArrayCutMultiplication
 
 #  S = Sqrt(X * X * 5 - 4) --> S*S DONE
-
 secondSSdone:
     mrmovq 80(%rsi), %rax             # Adding X * X * 5 - 4  to --> rax
     mrmovq 32(%rsi), %r14             # Adding MULTIPLICATION RESULT to --> rax
-    rrmovq %r14,%r8
-    irmovq $1,%r13
-    irmovq $0,%r10
-    subq %rax,%r14
-    cmove %r13,%r10                   # if S * S = X * X * 5 + 4, result = 1
-    rmmovq %r10,96(%rsi)              # Adding True or False result to memory
-    jmp fibonacciVerify
+    subq %rax,%r14                    # if S * S == X * X * 5 - 4
+    je fibonacciTrue                  # IF isPerfectSquare(5*x*x - 4)
+    # Else
+    mrmovq 56(%rsi), %rax             # Current X to rax
+    halt                              # Current X not Fibonacci number --> halt + return current X in rax.
 
-#  Checking if X is FIBONACCI number
 
-fibonacciVerify:
-    mrmovq 88(%rsi), %rax             # Adding first s*s == x result to --> rax
-    mrmovq 96(%rsi), %r14             # Adding second s*s == x result to --> rax
-    addq %rax,%r14                    # r14 =  0 + 1 OR 1 + 1 OR 0 + 0
-    irmovq $1,%r10
-    irmovq $0,%r13
+fibonacciTrue:
+    irmovq $0,%rax
     mrmovq 24(%rsi), %r8              # Auxiliary variable --> + 8
     addq %r8,%r11                     # Array pointer + 8
-    mrmovq 56(%rsi), %rax             # Current X to rax
-    subq %r10,%r14                    # Compare isPerfectSquare(5*x*x + 4) || isPerfectSquare(5*x*x - 4)
-    cmovge %r13,%rax                  # if  ^ true --> rax = 0
     jge listLoop                      # if  ^ ^ true listLoop continues
-    halt                              # else Halt and Returning current X in rax
+
 
 # MULTIPLICATION:
 #       Multiplication algorithm makes use of information about bit relations for example if 
@@ -227,6 +195,32 @@ fibonacciVerify:
 #       For example: 45 * 2^5 = (45 + 45 = 90) --> (90 + 90 = 180) --> (180 + 180 = 360) 
 #       --> (360 + 360 = 720) --> (720 + 720 = 1440) == 45 (101101) << 5
 #       Finally those sub Sum's are added together and that's Multiplication result
+
+bitArrayCutMultiplication:
+    irmovq $5376,%rdx                   # Bit array starting point
+
+    irmovq $16777216,%rdi               # 1 >> 24
+    irmovq $5440,%r9                    # 1 >> 24 array pointer
+    irmovq $24, %r14                    # Auxiliary variable for potency change
+    subq %rcx,%rdi
+    cmovge %r9,%rdx                     # if 1 >> 24 - Multiplier >= 0, we can cut bit list for this position
+    cmovge %r14,%r13                    # 2^ potency value uptade
+
+    irmovq $65536,%rdi                  # 1 >> 16
+    irmovq $5504,%r9                    # 1 >> 16 array pointer
+    irmovq $16, %r14                    # Auxiliary variable for potency change
+    subq %rcx,%rdi
+    cmovge %r9,%rdx                     # if 1 >> 16 - Multiplier >= 0, we can cut bit list for this position
+    cmovge %r14,%r13                    # 2^ potency value uptade
+
+    irmovq $256,%rdi                    # 1 >> 8
+    irmovq $5568,%r9                    # 1 >> 8 array pointer
+    irmovq $8, %r14                     # Auxiliary variable for potency change
+    subq %rcx,%rdi
+    cmovge %r9,%rdx                     # if 1 >> 8 - Multiplier >= 0, we can cut bit list for this position
+    cmovge %r14,%r13                    # 2^ potency value uptade
+
+    jmp multiplication
 
 multiplication:
     irmovq $0, %r14                   # Auxiliary variable
@@ -246,7 +240,6 @@ multiplicationLoop:
     subq %rbx,%r9                     # r9 - bit array value, if bigger then that point bit must be 1
     cmovge %r9,%rcx                   # rcx = r9
     cmovge %r12,%r14                  # r14 = Multiplicand
-    cmovge %r13,%r9                   # r9 = 2^ Potency Multiplier
     jge potencyCheck
     subq %r10,%r13
     mrmovq 24(%rsi),%rbx              # Bit array pointer + 8
@@ -254,7 +247,7 @@ multiplicationLoop:
     jmp multiplication
 
 potencyCheck:
-    rrmovq %r13,%r8
+    rrmovq %r13,%r8                   # r8 = 2^ Potency Multiplier
     irmovq $0, %r9                    # Auxiliary variable
     subq %r13,%r9                     # 0 - 2^ Potency Multiplier
     jl multiplicationSum              # if > 0
@@ -276,9 +269,9 @@ multiplicationSum:
 # SQRT 
 #       Sgrt algorithm also makes use of information about bit relations for example if 
 #       Sgrt algorithm Bit >> 2, it just check, which bit is 2 values smaller than curren Bit
-#       For Res >> 1, it use sameway Num - current > 0 information and if its true
+#       For Ress >> 1, it use sameway Num - current > 0 information and if its true
 #       Bit value which is 1 smaller in Bit list will be added into Sub sum 
-#       Finally those sub Sum's are added together and that's Res >> 1 result
+#       Finally those sub Sum's are added together and that's Ress >> 1 result
 
 biggerThanNum:
     rrmovq %rax,%r10                   # Bit --> r10
@@ -318,22 +311,41 @@ sqrtLoop:
     irmovq $0,%r13                      # Sum = 0
     rrmovq %rcx, %r14                   # Auxiliary variable
     mrmovq 24(%rsi), %r8                # Auxiliary variable --> + 8
+    jmp bitArrayCutSqrt
+
+bitArrayCutSqrt:
     irmovq $5376,%rdx                   # Bit array starting point
+
+    irmovq $16777216,%rdi               # 1 >> 24
+    irmovq $5440,%r9                    # 1 >> 24 array pointer
+    subq %r14,%rdi
+    cmovge %r9,%rdx                     # if 1 >> 24 - res >= 0, we can cut bit list for res >> 1 loop
+
+    irmovq $65536,%rdi                  # 1 >> 16
+    irmovq $5504,%r9                    # 1 >> 16 array pointer
+    subq %r14,%rdi
+    cmovge %r9,%rdx                     # if 1 >> 16 - res >= 0, we can cut bit list for res >> 1 loop
+
+    irmovq $256,%rdi                    # 1 >> 8
+    irmovq $5568,%r9                    # 1 >> 8 array pointer
+    subq %r14,%rdi
+    cmovge %r9,%rdx                     # if 1 >> 8 - res >= 0, we can cut bit list for res >> 1 loop
+
     jmp siftLoop
 
-# FOR RES >> 1 sift
+# FOR RESS >> 1 sift
 siftLoop:
     irmovq $0,%rdi                      # Auxiliary variable
     mrmovq (%rdx),%rbx                  # Bit array current value --> rbx
     mrmovq 8(%rdx),%r10                 # Bit array pointer + 8
     irmovq $0,%r9                       # Auxiliary variable
-    subq %r14,%r9                       # if Res (r14) = 0, no need to continue sift loop
+    subq %r14,%r9                       # if Ress (r14) = 0, no need to continue sift loop
     jne siftOne
     jmp compare
 
-# IF NUM >= RES >> 1 + BIT --> res = RES >> 1 + BIT or Else res = RES >> 1
+# IF ELSE NUM >= RES + BIT
 compare:
-    # Sift >> 1 for Res done
+    # Sift << 1 for Res done
     irmovq $0,%r14
     rmmovq %r13,8(%rsi)                # Adding sift sum = res >> 1 to memory
     irmovq $0, %rdi                    # Reseting Auxiliary variable
@@ -351,7 +363,7 @@ compare:
     jmp siftBit
 
 siftBit:
-    mrmovq 16(%rsi), %r8               # Auxiliary variable --> + 8
+    mrmovq 16(%rsi), %r8               # Auxiliary variable --> + 16
     mrmovq (%rsi),%rdx                 # Current bit pointer value --> rdx      
     addq %r8,%rdx                      # Adding + 16 to pointer value
     mrmovq (%rdx),%rax                 # Change bit (rax) to bit >> 2 value
@@ -359,7 +371,7 @@ siftBit:
     rmmovq %r14,(%rsi)                 # Updated pointer value to memory
     jmp biggerThanZero
 
-# RES >> 1 sift
+# RESS >> 1 sift
 siftOne:
     rrmovq %r14,%r9                    # res --> r9
     subq %rbx,%r9                      # r9 - bit array current value
@@ -432,8 +444,6 @@ memoryValues:
 .quad 0x0                             # Multiplication status 
 .quad 0x0                             # Sqrt status 
 .quad 0x0                             # X * X * 5 + 4 OR (X * X * 5 + 4) - 8 = X * X * 5 - 4 
-.quad 0x0                             # first s*s == x result, 1 = True, 0 = False 
-.quad 0x0                             # second s*s == x result, 1 = True, 0 = False 
 
 .pos 0x1900
 pino:
