@@ -50,7 +50,7 @@ main:
     #  If you add more bits into array, you would hate to update these values:
     #
     #	For right starting value:
-    #   	irmovq $4294967296,%rax            # Bit: equals to 1 << 32
+    #   	 irmovq $4294967296,%rax            # Bit: equals to 1 << 32
     #	    irmovq $4294967296,%r10            # 1 << 32 --> r10
     #
     #	Add + 1 to potency sum for each added bits
