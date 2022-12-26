@@ -51,7 +51,7 @@ main:
     #
     #	For right starting value:
     #   	 irmovq $4294967296,%rax            # Bit: equals to 1 << 32
-    #	          irmovq $4294967296,%r10            # 1 << 32 --> r10
+    #	         irmovq $4294967296,%r10            # 1 << 32 --> r10
     #
     #	Add + 1 to potency sum for each added bits
     #	.quad 0x20                                         # 2^ Potency starting value 
